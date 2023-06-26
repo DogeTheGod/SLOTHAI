@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { Configuration, OpenAIApi } from 'openai';
 
 const configuration = new Configuration({
@@ -6,23 +7,38 @@ const configuration = new Configuration({
 
 const openai = new OpenAIApi(configuration);
 
-const basePromptPrefix = "";
-
 const generateAction = async (req, res) => {
-  // Run first prompt
-  console.log(`API: ${basePromptPrefix}${req.body.userInput}`)
-//text-davinci-003
-//a piece of scrap
-  const baseCompletion = await openai.createCompletion({
-    model: "text-davinci-003",
-    prompt: `${basePromptPrefix}${req.body.userInput}`,
-    temperature: 0.9,
-    max_tokens: 3500
-  });
-  
-  const basePromptOutput = baseCompletion.data.choices.pop();
+  try {
+    const input = req.body.userInput;
+    const basePromptPrefix = '';
+    const data = {
+      model: "gpt-3.5-turbo",
+      prompt: `${basePromptPrefix}${input}`,
+      temperature: 0.1,
+      max_tokens: 2048
+    };
 
-  res.status(200).json({ output: basePromptOutput });
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      proxy: {
+        host: "127.0.0.1",
+        port: 15732, //here
+        protocol: "http" // e.g., "http" or "https"
+      }
+    };
+    //set http_proxy=http://127.0.0.1:15732&& set https_proxy=http://127.0.0.1:15732
+
+    const response = await axios.post('https://api.openai.com/v1/chat/completions', data, config);
+    const completion = response.data.choices.pop();
+
+    res.status(200).json({ output: completion });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: 'An error occurred' });
+  }
 };
 
 export default generateAction;
